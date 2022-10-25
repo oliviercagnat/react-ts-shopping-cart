@@ -1,94 +1,51 @@
-import { createContext, ReactNode, useContext, useState } from 'react';
-import { ShoppingCart } from '../components/ShoppingCart';
-import { useLocalStorage } from '../hooks/useLocalStorage';
+import { Button, Card } from 'react-bootstrap';
+import { useShoppingCart } from '../context/ShoppingCartContext';
+import { formatCurrency } from '../utilities/formatCurrency';
 
-type ShoppingCartProviderProps = {
-  children: ReactNode;
-};
-
-type CartItem = {
+type StoreItemProps = {
   id: number;
-  quantity: number;
+  name: string;
+  price: number;
+  imgUrl: string;
 };
 
-type ShoppingCartContext = {
-  openCart: () => void;
-  closeCart: () => void;
-  getItemQuantity: (id: number) => number;
-  increaseCartQuantity: (id: number) => void;
-  decreaseCartQuantity: (id: number) => void;
-  removeFromCart: (id: number) => void;
-  cartQuantity: number;
-  cartItems: CartItem[];
-};
-
-const ShoppingCartContext = createContext({} as ShoppingCartContext);
-
-export function useShoppingCart() {
-  return useContext(ShoppingCartContext);
-}
-export function ShoppingCartProvider({ children }: ShoppingCartProviderProps) {
-  const [isOpen, setIsOpen] = useState(false);
-  const [cartItems, setCartItems] = useLocalStorage<CartItem[]>('shopping-cart', []);
-
-  const cartQuantity = cartItems.reduce((quantity, item) => item.quantity + quantity, 0);
-
-  const openCart = () => setIsOpen(true);
-  const closeCart = () => setIsOpen(false);
-  function getItemQuantity(id: number) {
-    return cartItems.find((item) => item.id === id)?.quantity || 0;
-  }
-  function increaseCartQuantity(id: number) {
-    setCartItems((currItems) => {
-      if (currItems.find((item) => item.id === id) == null) {
-        return [...currItems, { id, quantity: 1 }];
-      } else {
-        return currItems.map((item) => {
-          if (item.id === id) {
-            return { ...item, quantity: item.quantity + 1 };
-          } else {
-            return item;
-          }
-        });
-      }
-    });
-  }
-  function decreaseCartQuantity(id: number) {
-    setCartItems((currItems) => {
-      if (currItems.find((item) => item.id === id)?.quantity === 1) {
-        return currItems.filter((item) => item.id !== id);
-      } else {
-        return currItems.map((item) => {
-          if (item.id === id) {
-            return { ...item, quantity: item.quantity - 1 };
-          } else {
-            return item;
-          }
-        });
-      }
-    });
-  }
-  function removeFromCart(id: number) {
-    setCartItems((currItems) => {
-      return currItems.filter((item) => item.id !== id);
-    });
-  }
+export function StoreItem({ id, name, price, imgUrl }: StoreItemProps) {
+  const { getItemQuantity, increaseCartQuantity, decreaseCartQuantity, removeFromCart } =
+    useShoppingCart();
+  const quantity = getItemQuantity(id);
 
   return (
-    <ShoppingCartContext.Provider
-      value={{
-        getItemQuantity,
-        increaseCartQuantity,
-        decreaseCartQuantity,
-        removeFromCart,
-        openCart,
-        closeCart,
-        cartItems,
-        cartQuantity,
-      }}
-    >
-      {children}
-      <ShoppingCart isOpen={isOpen} />
-    </ShoppingCartContext.Provider>
+    <Card className="h-100">
+      <Card.Img variant="top" src={imgUrl} height="200px" style={{ objectFit: 'cover' }} />
+      <Card.Body className="d-flex flex-column">
+        <Card.Title className="d-flex justify-content-between align-items-baseline mb-4">
+          <span className="fs-2">{name}</span>
+          <span className="ms-2 text-muted">{formatCurrency(price)}</span>
+        </Card.Title>
+        <div className="mt-auto">
+          {quantity === 0 ? (
+            <Button className="w-100" onClick={() => increaseCartQuantity(id)}>
+              + Add To Cart
+            </Button>
+          ) : (
+            <div className="d-flex align-items-center flex-column" style={{ gap: '.5rem' }}>
+              <div
+                className="d-flex align-items-center justify-content-center"
+                style={{ gap: '.5rem' }}
+              >
+                <Button onClick={() => decreaseCartQuantity(id)}>-</Button>
+                <div>
+                  <span className="fs-3">{quantity}</span> in cart
+                </div>
+                <Button onClick={() => increaseCartQuantity(id)}>+</Button>
+              </div>
+              <Button onClick={() => removeFromCart(id)} variant="danger" size="sm">
+                Remove
+              </Button>
+            </div>
+          )}
+        </div>
+      </Card.Body>
+    </Card>
   );
 }
